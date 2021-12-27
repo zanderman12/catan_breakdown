@@ -1,132 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 13 19:17:36 2021
+Created on Mon Dec 27 16:55:10 2021
 
 @author: alext
 """
-
-
 from bs4 import BeautifulSoup
-import os
 import json
 import scipy.stats as stats
-import pickle
 import numpy as np
+from catan.turn_class import Turn
+from catan.player_class import Player 
+from catan.robber_class import Robber
+from catan.trade_class import Trade
 
-class Turn:
-    def __init__(self, turnnumber):
-        self.turn = turnnumber
-        self.roll = 0
-        self.player = ''
-        self.playertype = ''
-        self.built = {'road': 0,
-                      'settlement': 0,
-                      'city': 0,
-                      'dev_card': 0}
-        self.dev_cards_built = ''
-        self.trades = []
-        self.resources_rolled = {'grain': 0, 'wool': 0, 'ore': 0, 'lumber': 0, ' brick': 0}
-        self.robber = []
-        self.bank_out_of_resource = ''
-        self.player_point_totals = {}
-        
-    def return_json(self):
-        turndict = {'turn': self.turn,
-                    'roll': self.roll,
-                    'player': self.player,
-                    'player_type': self.playertype,
-                    'built': self.built,
-                    'devcard_played': self.dev_cards_built,
-                    'resources_gained_through_roll': self.resources_rolled}
-        
-        trades = []
-        for t in self.trades:
-            trades.append(t.__dict__)
-        
-        turndict['trades'] = json.dumps(trades)
-        
-        robbers = []
-        for r in self.robber:
-            robbers.append(r.__dict__)
-            
-        turndict['robbers'] = json.dumps(robbers)
-        
-        return turndict
-        
-        
-class Trade:
-    def __init__(self, p1, p2, p1resources, p2resources):
-        self.p1 = p1
-        self.p2 = p2
-        self.p1resources = p1resources
-        self.p2resources = p2resources
-        
-class Robber:
-    def __init__(self, p1, p2, stolen_resource):
-        self.p1 = p1
-        self.p2 = p2
-        self.stolen_resource = stolen_resource
-        
-class Player:
-    def __init__(self, pname):
-        self.name = pname
-        self.points = 2
-        self.current_resources = {}
-        self.total_resources = {}
-        self.robber_discards = {}
-        for i in ['grain', 'wool', 'ore', 'lumber', ' brick']:
-            self.current_resources[i] = 0
-            self.total_resources[i] = 0
-            self.robber_discards[i] = 0
-            
-        self.built = {'road': 2,
-                      'settlement': 2,
-                      'city': 0,
-                      'dev_card': 0}
-        self.longest_road = False
-        self.largest_army = False
-        self.played_cards = []
-        self.starting_resources = []
-        self.trades = []
-        self.gained_largest_army = []
-        self.gained_longest_road = []
-        self.lost_largest_army = []
-        self.lost_longest_road = []
-        self.proposed_trades = []
-        
-    def return_json(self):
-        pdict = {'name': self.name,
-                 'points': self.points,
-                 'current_resources': self.current_resources,
-                 'total_resources': self.total_resources,
-                 'robber_discards': self.robber_discards,
-                 'built': self.built,
-                 'longest_road': self.longest_road,
-                 'largest_army': self.largest_army,
-                 'played_cards': self.played_cards,
-                 'starting_resources': self.starting_resources,
-                 'turn_gained_largest_army': self.gained_largest_army,
-                 'turn_gained_longest_road': self.gained_longest_road,
-                 'turn_lost_largest_army': self.lost_largest_army,
-                 'turn_lost_longest_road': self.lost_longest_road,
-                 }
-        
-        accepted_trades = []
-        for t in self.trades:
-            accepted_trades.append(t.__dict__)
-        
-        pdict['accepted_trades'] = accepted_trades
-        
-        proposed_trades = []
-        for t in self.proposed_trades:
-            proposed_trades.append(t.__dict__)
-        
-        pdict['proposed_trades'] = proposed_trades
-        
-        return pdict
-        
 class Game:
-    def __init__(self, html):
+    def __init__(self, html = None, jsondata = None):
         self.turns = []
         self.winner = ''
         self.players = {}
@@ -144,6 +32,7 @@ class Game:
                      12: 1}
         self.robber_locations = []
         self.html = html
+        self.jsondata = jsondata
         
     
         
@@ -252,6 +141,47 @@ class Game:
         self.availdict = availdict
         self.availdictodds = availdictodds
     
+    def read_json(self):
+        for t in self.jsondata['turns']:
+            turn = Turn(t['turn'])
+            turn.roll = t['roll']
+            self.all_rolls.append(t['roll'])
+            turn.player = t['player']
+            turn.playertype = t['player_type']
+            turn.built = t['built']
+            turn.dev_cards_built = t['devcard_played']
+            turn.trades = json.loads(t['trades'])
+            turn.resources_rolled = t['resources_gained_through_roll']
+            turn.robber = json.loads(t['robbers'])
+            self.turns.append(turn)
+        for p in self.jsondata['players']:
+            player = Player(p['name'])
+            player.points = p['points']
+            player.current_resources = p['current_resources']
+            player.total_resources = p['total_resources']
+            player.robber_discards = p['robber_discards']
+                
+            player.built = p['built']
+            player.longest_road = p['longest_road']
+            player.largest_army = p['largest_army']
+            player.played_cards = p['played_cards']
+            player.starting_resources = p['starting_resources']
+            player.trades = []
+            for t in p['accepted_trades']:
+                player.trades.append(Trade(t['p1'], t['p2'], 
+                                           t['p1resources'], t['p2resources']))
+            
+            player.gained_largest_army = p['turn_gained_largest_army']
+            player.gained_longest_road = p['turn_gained_longest_road']
+            player.lost_largest_army = p['turn_lost_largest_army']
+            player.lost_longest_road = p['turn_lost_longest_road']
+            player.proposed_trades = []
+            for t in p['proposed_trades']:
+                player.proposed_trades.append(Trade(t['p1'], t['p2'], 
+                                                    t['p1resources'], t['p2resources']))
+            
+            self.players[p['name']] = player
+        self.winner = self.jsondata['winner']
                         
     def read_html(self):
         threads = self.html.find_all('div', attrs = {'class': 'main_block game_chat_block'})
@@ -531,74 +461,3 @@ class Game:
             #     print(i.text)
                 
         self.game_over_calcs()
-        
-def read_all_games(start = 0, end = None):
-    fnames = []
-    fnums = []
-    path = "C:/Users/alext/Desktop/projects/website/blog/colonist game/saved_html"
-    for file in os.listdir(path):
-        if file.endswith(".html"):
-            fnames.append(file)
-            a = file.split(".")
-            
-            fnum = a[0].split(' ')
-            
-            fnums.append(int(fnum[-1]))
-        
-    if not end:
-        end = max(fnums) +1
-    
-    games = []
-    for i in range(len(fnames)):
-        if start < fnums[i] and fnums[i] < end: 
-            fname = fnames[i]
-        else:
-            continue
-        try: 
-            with open(path+'/'+fname, encoding = 'utf-8') as fp:
-                soup = BeautifulSoup(fp, 'html.parser')
-            
-            
-            
-            newgame = Game(soup)
-            newgame.read_html()
-    
-            
-            games.append(newgame)
-        except:
-            print(fname)
-            
-    return games
-
-if __name__ == '__main__':
-    fnames = []
-    path = "C:/Users/alext/Desktop/projects/website/blog/colonist game/saved_html"
-    for file in os.listdir(path):
-        if file.endswith(".html"):
-            fnames.append(file)
-            
-    
-    games = []
-    for fname in fnames[200:202]:
-        try: 
-            with open(path+'/'+fname, encoding = 'utf-8') as fp:
-                soup = BeautifulSoup(fp, 'html.parser')
-            
-            
-            
-            newgame = Game(soup)
-            newgame.read_html()
-    
-            
-            games.append(newgame)
-        except:
-            print(fname)
-            
-
-    
-            
-        
-    # pickle.dump(games, open('colonist_games.pickle', 'wb'))
-                
-                
-                
