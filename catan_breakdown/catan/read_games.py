@@ -8,27 +8,53 @@ Created on Tue Jul 13 19:17:36 2021
 
 from bs4 import BeautifulSoup
 import os
-import anvil.server
-from anvil.tables import app_tables
+# import anvil.server
+# from anvil.tables import app_tables
 import json
 
 from catan.game_class import Game
 
-def read_anvil_games():
-    anvil.server.connect('TTNUYQ34ZJ6WS6PAZYSTSPME-L7PJBIQLBF6QMRJF')
-    jsons = [r['json_text'] for r in app_tables.submitted_data.search()]
-    print(len(jsons))
-    games = []
-    for j in jsons:
-        jdata = json.loads(j)
-        game = Game(jsondata=jdata)
-        game.read_json()
-        games.append(game)
-    return games
+# def read_anvil_games():
+#     '''
+#     read all the json data from anvil and return a list of each game as a game class
+
+#     Returns
+#     -------
+#     games : list of game classes
+#         DESCRIPTION.
+
+#     '''
+#     anvil.server.connect('TTNUYQ34ZJ6WS6PAZYSTSPME-L7PJBIQLBF6QMRJF')
+#     jsons = [r['json_text'] for r in app_tables.submitted_data.search()]
+#     print(len(jsons))
+#     games = []
+#     for j in jsons:
+#         jdata = json.loads(j)
+#         game = Game(jsondata=jdata)
+#         game.read_json()
+#         game.game_over_calcs()
+#         games.append(game)
+#     return games
         
         
     
 def read_all_games(start = 0, end = None):
+    '''
+    read games from local html files
+
+    Parameters
+    ----------
+    start : int, optional
+        if only reading a subset, where to start from. The default is 0.
+    end : int, optional
+        if only reading a subset, where to end. The default is None.
+
+    Returns
+    -------
+    games : list of game classes
+        DESCRIPTION.
+
+    '''
     fnames = []
     fnums = []
     path = "C:/Users/alext/Desktop/projects/website/blog/colonist game/saved_html"
@@ -66,31 +92,22 @@ def read_all_games(start = 0, end = None):
             
     return games
 
+def export_jsons(games):
+    jsons = {}
+    gcount = 0
+    for game in games:
+        gcount += 1
+        j = game.jsonify_data()
+        jsons[gcount] = j
+    with open('catan_games.txt', 'w') as outfile:
+        json.dump(jsons, outfile)
+    
+
 if __name__ == '__main__':
-    # fnames = []
-    # path = "C:/Users/alext/Desktop/projects/website/blog/colonist game/saved_html"
-    # for file in os.listdir(path):
-    #     if file.endswith(".html"):
-    #         fnames.append(file)
-            
     
-    # games = []
-    # for fname in fnames[200:202]:
-    #     try: 
-    #         with open(path+'/'+fname, encoding = 'utf-8') as fp:
-    #             soup = BeautifulSoup(fp, 'html.parser')
-            
-            
-            
-    #         newgame = Game(soup)
-    #         newgame.read_html()
     
-            
-    #         games.append(newgame)
-    #     except:
-    #         print(fname)
-    
-    a = read_anvil_games()
+    games = read_all_games()
+    export_jsons(games)
             
 
     

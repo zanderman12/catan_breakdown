@@ -22,6 +22,9 @@ class Turn:
         self.robber = []
         self.bank_out_of_resource = ''
         self.player_point_totals = {}
+        self.player_resource_totals = {}
+        self.html_actions = []
+        
         
     def return_json(self):
         turndict = {'turn': self.turn,

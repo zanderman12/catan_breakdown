@@ -6,27 +6,30 @@ Created on Mon Dec  6 09:51:41 2021
 """
 import numpy as np
 import pandas as pd
-import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
-import read_games
-from scipy.optimize import curve_fit
-from sklearn.linear_model import LinearRegression
+from catan import read_games
 
 #%%
 
 if __name__ == '__main__': 
     
     games = read_games.read_all_games()
+    #%%
+    agames = read_games.read_anvil_games()
     
     #%%
     
+    allgames = games + agames
+    #%%
     gcount = 0
     data = []
     
-    for game in games:
+    for game in allgames:
         gcount += 1
         pdict = {}
+        if len(game.players.keys()) != 4:
+            continue
         for p in game.players.keys():
             pdict[p] = {}
             pdict[p]['winner'] = game.players[p].name == game.winner
@@ -78,7 +81,10 @@ if __name__ == '__main__':
                         p2ore += 1
                         
                 if trade.p1 != 'bank':
-                    p1points = turn.player_point_totals[trade.p1]
+                    try: 
+                        p1points = turn.player_point_totals[trade.p1]
+                    except KeyError:
+                        p1points = None
                     p1ptype = pdict[trade.p1]['playertype']
                     p1winner = pdict[trade.p1]['winner']
                 else:
@@ -87,7 +93,10 @@ if __name__ == '__main__':
                     p1winner = None
                 
                 if trade.p2 != 'bank':
-                    p2points = turn.player_point_totals[trade.p2]
+                    try:
+                        p2points = turn.player_point_totals[trade.p2]
+                    except KeyError:
+                        p2points = None
                     p2ptype = pdict[trade.p2]['playertype']
                     p2winner = pdict[trade.p2]['winner']
                 else:
@@ -166,26 +175,63 @@ if __name__ == '__main__':
     ddf['norm_bankless_resource_value'] = ddf.resource_value.apply(lambda x: x/u_bankless_resource_value)    
     
     #%%
-    
+    gdf = ddf.groupby('resource').resource_value.describe()
     plt.figure()
-    sns.barplot(x = 'resource', y = 'resource_value', data = ddf)
+    plt.bar(x = ['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'], 
+            height = [gdf.loc['wood', 'mean'],
+                      gdf.loc['brick', 'mean'],
+                      gdf.loc['sheep', 'mean'],
+                      gdf.loc['wheat', 'mean'],
+                      gdf.loc['ore', 'mean']],
+            yerr = [gdf.loc['wood', 'std']/np.sqrt(gdf.loc['wood', 'count']),
+                      gdf.loc['brick', 'std']/np.sqrt(gdf.loc['brick', 'count']),
+                      gdf.loc['sheep', 'std']/np.sqrt(gdf.loc['sheep', 'count']),
+                      gdf.loc['wheat', 'std']/np.sqrt(gdf.loc['wheat', 'count']),
+                      gdf.loc['ore', 'std']/np.sqrt(gdf.loc['ore', 'count'])],
+            color = ['#336600', '#993300', '#70db70', '#ffcc00', '#808080'])
+    # sns.barplot(x = 'resource', y = 'resource_value', data = ddf)
     plt.xlabel('Resource')
     plt.ylabel('Estimated Resource Value')
     plt.title('General Resource Value')
         
     #%%
-    
+    gdf = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank')].groupby('resource').resource_value.describe()
     plt.figure()
-    sns.barplot(x = 'resource', y = 'resource_value', data = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank')])
+    plt.bar(x = ['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'], 
+            height = [gdf.loc['wood', 'mean'],
+                      gdf.loc['brick', 'mean'],
+                      gdf.loc['sheep', 'mean'],
+                      gdf.loc['wheat', 'mean'],
+                      gdf.loc['ore', 'mean']],
+            yerr = [gdf.loc['wood', 'std']/np.sqrt(gdf.loc['wood', 'count']),
+                      gdf.loc['brick', 'std']/np.sqrt(gdf.loc['brick', 'count']),
+                      gdf.loc['sheep', 'std']/np.sqrt(gdf.loc['sheep', 'count']),
+                      gdf.loc['wheat', 'std']/np.sqrt(gdf.loc['wheat', 'count']),
+                      gdf.loc['ore', 'std']/np.sqrt(gdf.loc['ore', 'count'])],
+            color = ['#336600', '#993300', '#70db70', '#ffcc00', '#808080'])
+    
     plt.ylim([0.8,1.2])
     plt.xlabel('Resource')
     plt.ylabel('Estimated Resource Value')
     plt.title('General Resource Value (Excluding Bank Trades)')
     
     #%%
-    
+    gdf = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank') & (ddf.p1type != 'bot') & (ddf.p2type != 'bot')].groupby('resource').resource_value.describe()
     plt.figure()
-    sns.barplot(x = 'resource', y = 'resource_value', data = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank') & (ddf.p1type != 'bot') & (ddf.p2type != 'bot')])
+    plt.bar(x = ['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'], 
+            height = [gdf.loc['wood', 'mean'],
+                      gdf.loc['brick', 'mean'],
+                      gdf.loc['sheep', 'mean'],
+                      gdf.loc['wheat', 'mean'],
+                      gdf.loc['ore', 'mean']],
+            yerr = [gdf.loc['wood', 'std']/np.sqrt(gdf.loc['wood', 'count']),
+                      gdf.loc['brick', 'std']/np.sqrt(gdf.loc['brick', 'count']),
+                      gdf.loc['sheep', 'std']/np.sqrt(gdf.loc['sheep', 'count']),
+                      gdf.loc['wheat', 'std']/np.sqrt(gdf.loc['wheat', 'count']),
+                      gdf.loc['ore', 'std']/np.sqrt(gdf.loc['ore', 'count'])],
+            color = ['#336600', '#993300', '#70db70', '#ffcc00', '#808080'])
+    
+    
     plt.ylim([0.8,1.3])
     plt.xlabel('Resource')
     plt.ylabel('Estimated Resource Value')
@@ -193,27 +239,51 @@ if __name__ == '__main__':
     
     #%%
     plt.figure()
-    sns.lineplot(x = 'per_turn', y = 'resource_value', hue = 'resource', data = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank')])
+    for x, c in zip(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'],['#336600', '#993300', '#70db70', '#ffcc00', '#808080']):
+        gdf = ddf[ddf.resource == x.lower()].groupby('per_turn').mean().reset_index()
+        plt.plot(gdf.per_turn, gdf.resource_value, color = c, linewidth = 2)
+    # sns.lineplot(x = 'per_turn', y = 'resource_value', hue = 'resource', data = ddf)
+    plt.xlabel('% of game complete')
+    plt.ylabel('Resource Value')
+    plt.title('Resource Value by Amount of Game Played')
+    plt.legend(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'])
+    
+    #%%
+    plt.figure()
+    for x, c in zip(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'],['#336600', '#993300', '#70db70', '#ffcc00', '#808080']):
+        gdf = ddf[(ddf.resource == x.lower()) & (ddf.p1 != 'bank') & (ddf.p2 != 'bank')].groupby('per_turn').mean().reset_index()
+        plt.plot(gdf.per_turn, gdf.resource_value, color = c, linewidth = 2)
+    # sns.lineplot(x = 'per_turn', y = 'resource_value', hue = 'resource', data = ddf)
     plt.xlabel('% of game complete')
     plt.ylabel('Resource Value')
     plt.title('Bankless Resource Value by Amount of Game Played')
+    plt.legend(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'])
     
         #%%
     plt.figure()
-    sns.lineplot(x = 'per_turn', y = 'resource_value', hue = 'resource', data = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank') & (ddf.p1type != 'bot') & (ddf.p2type != 'bot')])
+    for x, c in zip(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'],['#336600', '#993300', '#70db70', '#ffcc00', '#808080']):
+        gdf = ddf[(ddf.resource == x.lower()) & (ddf.p1 != 'bank') & (ddf.p2 != 'bank') & (ddf.p1type != 'bot') & (ddf.p2type != 'bot')].groupby('per_turn').mean().reset_index()
+        plt.plot(gdf.per_turn, gdf.resource_value, color = c, linewidth = 2)
+    # sns.lineplot(x = 'per_turn', y = 'resource_value', hue = 'resource', data = ddf)
     plt.xlabel('% of game complete')
     plt.ylabel('Resource Value')
     plt.title('Bankless and Botless Resource Value by Amount of Game Played')
+    plt.legend(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'])
+    
     
     
     #%%
     plt.figure()
-    sns.lineplot(x = 'p1points', y = 'resource_value', hue = 'resource', data = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank')])
+    for x, c in zip(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'],['#336600', '#993300', '#70db70', '#ffcc00', '#808080']):
+        gdf = ddf[(ddf.resource == x.lower()) & (ddf.p1 != 'bank') & (ddf.p2 != 'bank')].groupby('p1points').mean().reset_index()
+        plt.plot(gdf.p1points, gdf.resource_value, color = c, linewidth = 2)
+    # sns.lineplot(x = 'p1points', y = 'resource_value', hue = 'resource', data = ddf[(ddf.p1 != 'bank') & (ddf.p2 != 'bank')])
     plt.xlim([2,9])
     plt.xlabel('Point Total')
     plt.ylabel('Resource Value')
     plt.ylim([0.5, 2])
     plt.title('Bankless Resource Value by Amount of Points')
+    plt.legend(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'])
     
     #%%
     
@@ -250,11 +320,38 @@ if __name__ == '__main__':
     
     #%%
     
-    gdf = ddf.groupby(['gid', 'resource']).mean().reset_index()
     
-    sns.lineplot(x = 'resourcebase', y = 'resource_value', hue = 'resource', data = gdf)
+    
+    # sns.lineplot(x = 'resourcebase', y = 'resource_value', hue = 'resource', data = gdf)
+    
+    plt.figure()
+    for x, c in zip(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'],['#336600', '#993300', '#70db70', '#ffcc00', '#808080']):
+        gdf = ddf[(ddf.resource == x.lower()) & (ddf.resourcebase < 18)].groupby('resourcebase').mean().reset_index()
+        plt.plot(gdf.resourcebase, gdf.resource_value, color = c, linewidth = 2)
+    plt.xlabel('Resource Base')
+    plt.ylabel('Resource Value')
+    plt.title('Resource Value by Base Availability')
+    plt.legend(['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'])
     
     #%%
+    # gdf = ddf.groupby(['gid', 'resource']).mean().reset_index()
+    # sns.barplot(x = 'resource', y = 'resourcebase', data = gdf)
     
-    sns.barplot(x = 'resource', y = 'resourcebase', data = gdf)
+    gdf = ddf.groupby('resource').resourcebase.describe()
+    plt.figure()
+    plt.bar(x = ['Wood', 'Brick', 'Sheep', 'Wheat', 'Ore'], 
+            height = [gdf.loc['wood', 'mean'],
+                      gdf.loc['brick', 'mean'],
+                      gdf.loc['sheep', 'mean'],
+                      gdf.loc['wheat', 'mean'],
+                      gdf.loc['ore', 'mean']],
+            yerr = [gdf.loc['wood', 'std']/np.sqrt(gdf.loc['wood', 'count']),
+                      gdf.loc['brick', 'std']/np.sqrt(gdf.loc['brick', 'count']),
+                      gdf.loc['sheep', 'std']/np.sqrt(gdf.loc['sheep', 'count']),
+                      gdf.loc['wheat', 'std']/np.sqrt(gdf.loc['wheat', 'count']),
+                      gdf.loc['ore', 'std']/np.sqrt(gdf.loc['ore', 'count'])],
+            color = ['#336600', '#993300', '#70db70', '#ffcc00', '#808080'])
     
+    plt.xlabel('Resource')
+    plt.ylabel('Resource Base')
+    plt.title('Average Resource Base')

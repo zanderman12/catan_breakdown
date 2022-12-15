@@ -9,7 +9,7 @@ import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
-import read_games
+from catan import read_games
 
 if __name__ == '__main__': 
     
@@ -186,3 +186,46 @@ if __name__ == '__main__':
     plt.ylabel('Resource Count')
     plt.title('Resource Counts Split by Winner')
         
+    
+    #%%
+    
+    from scipy.stats import zscore
+    
+    dfs = []
+    for g, gdf in ddf.groupby('gid'):
+        gdf['total_resource_z'] = np.round(zscore(gdf.total_resources),2)
+        gdf['placement'] = gdf.points.rank(ascending = False, method = 'min')
+        
+        dfs.append(gdf)
+        
+    ddf = pd.concat(dfs)
+    
+    #%%
+    adf = pd.merge(ddf, df[['num_turns']], left_on = 'gid', how = 'left', right_index = True)
+    adf.dropna(axis = 0, how = 'any', inplace = True)
+    adf['70_turn_norm_resource_total'] = np.round(70 * adf.total_resources/adf.num_turns)
+    adf['70_norm_resource_total_z'] = np.round(zscore(adf['70_turn_norm_resource_total']),1)
+    
+    
+    
+    fig, axs = plt.subplots(1,2, sharey = True)
+    a = adf.groupby('70_turn_norm_resource_total').mean().reset_index()
+    a['clean_winner'] = 100*a.winner
+    sns.regplot(ax = axs[0], x = '70_turn_norm_resource_total', y = 'clean_winner', data = a)
+    axs[0].axhline(y = 50)
+    axs[0].axhline(y = 25)
+    axs[0].axhline(y = 12.5)
+
+    
+    a = adf.groupby('70_norm_resource_total_z').mean().reset_index()
+    a['clean_winner'] = 100*a.winner
+    sns.regplot(ax = axs[1], x = '70_norm_resource_total_z', y = 'clean_winner', data = a)
+    axs[1].axhline(y = 50)
+    axs[1].axhline(y = 25)
+    axs[1].axhline(y = 12.5)
+
+    axs[0].set_ylabel('Odds of Winning the game')
+    axs[0].set_xlabel('Normalized Total Resources')
+    axs[1].set_xlabel('Z Score of Normalized Total Resources')
+    axs[1].set_ylabel('')
+    

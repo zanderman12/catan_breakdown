@@ -55,10 +55,12 @@ class Game:
         return json.dumps(gdict)
     
     def dice_fairness(self):
-        numrolls = len(self.all_rolls)
+        numrolls = 0
         rolldict = {2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0}
         for i in self.all_rolls:
-            rolldict[i] += 1
+            if i in rolldict.keys():
+                rolldict[i] += 1
+                numrolls += 1
             
         obs = []
         exp = []
@@ -150,10 +152,16 @@ class Game:
             turn.playertype = t['player_type']
             turn.built = t['built']
             turn.dev_cards_built = t['devcard_played']
-            turn.trades = json.loads(t['trades'])
+            trades = json.loads(t['trades'])
+            turn.trades = []
+            for trade in trades:
+                turn.trades.append(Trade(trade['p1'], trade['p2'], 
+                                         trade['p1resources'], trade['p2resources']))
             turn.resources_rolled = t['resources_gained_through_roll']
             turn.robber = json.loads(t['robbers'])
+            
             self.turns.append(turn)
+            
         for p in self.jsondata['players']:
             player = Player(p['name'])
             player.points = p['points']
@@ -194,12 +202,16 @@ class Game:
             
             if i.text == '':
                 current_turn += 1
+                # print(current_turn)
                 if newturn:
                     self.turns.append(newturn)
                 newturn = Turn(current_turn)
                 newturn.player_point_totals = {}
                 for p in self.players.keys():
                     newturn.player_point_totals[p] = self.players[p].points
+                    if self.players[p].current_resource_total < 0:
+                        self.players[p].current_resource_total = 0
+                    newturn.player_resource_totals[p] = self.players[p].current_resource_total
                     
                 
             elif 'rolled' in i.text:
@@ -214,6 +226,7 @@ class Game:
                 newturn.playertype = b[0]['alt']
                 newturn.roll = roll
                 newturn.player = user
+                newturn.html_actions.append(('roll', str(i)))
                 
                 
             elif 'starting resources' in i.text:
@@ -227,24 +240,34 @@ class Game:
                     if j['alt'] in possible_resources:
                         newplayer.starting_resources.append(j['alt'])
                         newplayer.current_resources[j['alt']] += 1
+                        newplayer.current_resource_total += 1
                         newplayer.total_resources[j['alt']] += 1
+                    if 'bot' == j['alt']:
+                        newplayer.isbot = True
                 
                 self.players[user] = newplayer
                 current_turn = 0
                 self.turns = []
+                
+
+                    
+                    
             
             elif 'got' in i.text: 
                 user = i.text.split(' ')[0]
+                newturn.html_actions.append(('resources distributed', str(i)))
                 
                 for j in i.find_all('img'):
                     if j['alt'] in possible_resources:
                         self.players[user].current_resources[j['alt']] += 1
+                        self.players[user].current_resource_total += 1
                         self.players[user].total_resources[j['alt']] += 1
                         
                         newturn.resources_rolled[j['alt']] += 1
                                 
             elif 'built' in i.text:
                 user = i.text.split(' ')[0]
+                newturn.html_actions.append(('built', str(i)))
                 
                 for j in i.find_all('img'):
                     if j['alt'] in ['road', 'settlement', 'city']:
@@ -253,42 +276,49 @@ class Game:
                             self.players[user].points += 1
                             for spentres in ['lumber', 'grain', 'wool', ' brick']:
                                 self.players[user].current_resources[spentres] -= 1
+                                self.players[user].current_resource_total -= 1
                         elif j['alt'] == 'city':
                             self.players[user].points += 1
                             for spentres in ['ore', 'ore', 'ore', 'grain', 'grain']:
                                 self.players[user].current_resources[spentres] -= 1
+                                self.players[user].current_resource_total -= 1
                         
                         elif j['alt'] == 'road':
                             
                             for spentres in ['lumber', ' brick']:
                                 self.players[user].current_resources[spentres] -= 1
+                                self.players[user].current_resource_total -= 1
                            
                         if newturn:
                             newturn.built[j['alt']] += 1
                         
             elif 'bought' in i.text:
                 user = i.text.split(' ')[0]
+                newturn.html_actions.append(('dev card', str(i)))
                 
                 self.players[user].built['dev_card'] += 1
                 
                 
                 for spentres in ['ore', 'grain', 'wool']:
                     self.players[user].current_resources[spentres] -= 1
+                    self.players[user].current_resource_total -= 1
                         
                 if newturn:
                     newturn.built['dev_card'] += 1
                 
             elif 'received' in i.text and 'starting' not in i.text:
+                
                 user = i.text.split(' ')[0]
                 for j in i.find_all('img'):
                     if j['alt'] =='largest army':
                         self.players[user].largest_army = True
                         self.players[user].gained_largest_army.append(current_turn)
                         self.players[user].points += 2
-                    elif j['alt'] == 'largest road':
+                    elif j['alt'] == 'longest road':
                         self.players[user].longest_road = True
                         self.players[user].gained_longest_road.append(current_turn)
                         self.players[user].points += 2
+                
                         
             elif 'won' in i.text:
                 user = i.text.split(' ')[1]
@@ -297,6 +327,7 @@ class Game:
                 
             elif 'discarded' in i.text:
                 user = i.text.split(' ')[0]
+                newturn.html_actions.append(('robber discard', i))
                 
                 for j in i.find_all('img'):
                     if j['alt'] in possible_resources:
@@ -305,6 +336,7 @@ class Game:
             elif 'used' in i.text:
                 
                 user = i.text.split(' ')[0]
+                newturn.html_actions.append(('dev card played', str(i)))
                 for c in ['Knight', 'Monopoly', 'Road Building', 'Year of Plenty']:
                     if c in i.text:
                         self.players[user].played_cards.append(c)
@@ -314,6 +346,7 @@ class Game:
                         self.players[user].built['road'] += 2
                         
             elif 'gave' in i.text:
+                newturn.html_actions.append(('bank trade', str(i)))
                 user = i.text.split(' ')[0]
                 #trade with bank
                 a = BeautifulSoup(str(i).split('and took')[0], 'html.parser')
@@ -323,6 +356,7 @@ class Game:
                     if j['alt'] in possible_resources:
                         tobank.append(j['alt'])
                         self.players[user].current_resources[j['alt']] -= 1
+                        self.players[user].current_resource_total -= 1
                         
                 b = BeautifulSoup(str(i).split('and took')[1], 'html.parser')
                 frombank = []
@@ -330,6 +364,7 @@ class Game:
                     if j['alt'] in possible_resources:
                         frombank.append(j['alt'])
                         self.players[user].current_resources[j['alt']] += 1
+                        self.players[user].current_resource_total += 1
                         
                 newtrade = Trade(user, 'bank', tobank, frombank)
                 self.players[user].trades.append(newtrade)
@@ -337,6 +372,7 @@ class Game:
                 
                 
             elif 'stole' in i.text and 'all' not in i.text:
+                newturn.html_actions.append(('robber steal', str(i)))
                 user = i.text.split(' ')[0]
                 victim = i.text.split(' ')[-1]
                 if victim:
@@ -350,10 +386,15 @@ class Game:
                         if j['alt'] in possible_resources:
                             newsteal = Robber(user, victim, j['alt'])
                             self.players[user].current_resources[j['alt']] += 1
+                            self.players[user].current_resource_total += 1
                             self.players[user].total_resources[j['alt']] += 1
-                            self.players[victim].current_resources[j['alt']] += 1
+                            self.players[victim].current_resources[j['alt']] -= 1
+                            self.players[victim].current_resource_total -= 1
                             if newturn:
                                 newturn.robber.append(newsteal)
+                        elif j['alt'] == 'card':
+                            self.players[user].current_resource_total += 1
+                            self.players[victim].current_resource_total -= 1
                 
             elif 'passed' in i.text:
                 victimtext = i.text.split('to:')[0]
@@ -382,6 +423,7 @@ class Game:
                         self.players[user].points += 2
                         self.players[victim].points -= 2
             elif 'traded' in i.text:
+                newturn.html_actions.append(('player trade', str(i)))
                 user = i.text.split(' ')[0]
                 partner = i.text.split(' ')[-1]
                 
@@ -391,7 +433,9 @@ class Game:
                     if j['alt'] in possible_resources:
                         topartner.append(j['alt'])
                         self.players[user].current_resources[j['alt']] -= 1
+                        self.players[user].current_resource_total -= 1
                         self.players[partner].current_resources[j['alt']] += 1
+                        self.players[partner].current_resource_total += 1
                         
                 b = BeautifulSoup(str(i).split('for:')[1], 'html.parser')
                 frompartner = []
@@ -399,7 +443,9 @@ class Game:
                     if j['alt'] in possible_resources:
                         frompartner.append(j['alt'])
                         self.players[user].current_resources[j['alt']] += 1
+                        self.players[user].current_resource_total += 1
                         self.players[partner].current_resources[j['alt']] -= 1
+                        self.players[partner].current_resource_total -= 1
                         
                 newtrade = Trade(user, partner, topartner, frompartner)
                 newturn.trades.append(newtrade)
@@ -426,15 +472,16 @@ class Game:
                 
             elif 'took from bank' in i.text:
                 user = i.text.split(' ')[0]
-                
+                newturn.html_actions.append(('took resources', str(i)))
                 for j in i.find_all('img'):
                     if j['alt'] in possible_resources:
                         self.players[user].current_resources[j['alt']] += 1
+                        self.players[user].current_resource_total += 1
                         self.players[user].total_resources[j['alt']] += 1
                 
             elif 'stole all' in i.text:
                 user = i.text.split(' ')[0]
-                
+                newturn.html_actions.append(('monopoly', str(i)))
                 total_stolen = 0
                 stolen_resource = ''
                 for j in i.find_all('img'):
@@ -442,10 +489,17 @@ class Game:
                         stolen_resource = j['alt']
                         for p in self.players.keys():
                             if p != user:
-                                total_stolen += self.players[p].current_resources[j['alt']]
-                                self.players[p].current_resources[j['alt']] = 0
+                                if self.players[p].current_resources[j['alt']] < self.players[p].current_resource_total:
+                                    total_stolen += self.players[p].current_resources[j['alt']]
+                                    self.players[p].current_resources[j['alt']] = 0
+                                    self.players[p].current_resource_total -= self.players[p].current_resources[j['alt']]
+                                else:
+                                    total_stolen += self.players[p].current_resource_total
+                                    self.players[p].current_resources[j['alt']] = 0
+                                    self.players[p].current_resource_total = 0
                                 
                 self.players[user].current_resources[stolen_resource] += total_stolen
+                self.players[user].current_resource_total += total_stolen
                 
                 
             elif 'moved' in i.text:
@@ -457,6 +511,7 @@ class Game:
                 for j in i.find_all('img'):
                     newturn.bank_out_of_resource = j['alt']
                     
+                
             # else:
             #     print(i.text)
                 

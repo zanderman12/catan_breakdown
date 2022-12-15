@@ -13,8 +13,9 @@ class Player:
         self.current_resources = {}
         self.total_resources = {}
         self.robber_discards = {}
+        self.current_resource_total = 0
         for i in ['grain', 'wool', 'ore', 'lumber', ' brick']:
-            self.current_resources[i] = 0
+            self.current_resources[i] = 0 #loses track when I don't know what resource was stolen
             self.total_resources[i] = 0
             self.robber_discards[i] = 0
             
@@ -32,6 +33,7 @@ class Player:
         self.lost_largest_army = []
         self.lost_longest_road = []
         self.proposed_trades = []
+        self.isbot = False
         
     def return_json(self):
         pdict = {'name': self.name,
