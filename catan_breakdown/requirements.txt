@@ -74,7 +74,7 @@ parso @ file:///tmp/build/80754af9/parso_1617223946239/work
 pathspec==0.7.0
 pexpect @ file:///tmp/build/80754af9/pexpect_1605563209008/work
 pickleshare @ file:///tmp/build/80754af9/pickleshare_1606932040724/work
-Pillow==8.4.0
+Pillow==10.0.1
 pluggy @ file:///C:/ci/pluggy_1633697237830/work
 poyo @ file:///tmp/build/80754af9/poyo_1617751526755/work
 prompt-toolkit @ file:///tmp/build/80754af9/prompt-toolkit_1633440160888/work
