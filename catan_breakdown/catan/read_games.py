@@ -24,7 +24,7 @@ from catan.game_class import Game
 #         DESCRIPTION.
 
 #     '''
-#     anvil.server.connect('TTNUYQ34ZJ6WS6PAZYSTSPME-L7PJBIQLBF6QMRJF')
+#     anvil.server.connect('')
 #     jsons = [r['json_text'] for r in app_tables.submitted_data.search()]
 #     print(len(jsons))
 #     games = []
@@ -57,7 +57,7 @@ def read_all_games(start = 0, end = None):
     '''
     fnames = []
     fnums = []
-    path = "C:/Users/alext/Desktop/projects/website/blog/colonist game/saved_html"
+    path = ""
     for file in os.listdir(path):
         if file.endswith(".html"):
             fnames.append(file)
