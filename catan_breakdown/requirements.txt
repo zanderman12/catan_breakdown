@@ -11,7 +11,7 @@ backcall @ file:///home/ktietz/src/ci/backcall_1611930011877/work
 bcrypt @ file:///C:/ci/bcrypt_1597936263757/work
 beautifulsoup4==4.10.0
 binaryornot @ file:///tmp/build/80754af9/binaryornot_1617751525010/work
-black==19.10b0
+black==23.12.1
 bleach @ file:///tmp/build/80754af9/bleach_1628110601003/work
 brotlipy==0.7.0
 -e git+https://github.com/zanderman12/catan_breakdown.git@18d40b000a97385da6ba95d655e0e3034c840aa8#egg=catan&subdirectory=catan_breakdown
