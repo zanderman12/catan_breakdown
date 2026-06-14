@@ -1,5 +1,6 @@
 import sys
 import os
+import random
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
@@ -8,6 +9,7 @@ from catan.board import CatanBoard, ADJACENCY, NODE_COORDS
 
 @pytest.fixture(scope="module")
 def board():
+    random.seed(42)
     return CatanBoard()
 
 
@@ -94,3 +96,15 @@ def test_resource_score_returns_float(board):
         assert isinstance(score, float)
         # Score can be negative when a resource is heavily over-supplied on the board
         # (regression formula: value = base - coeff * availability can go negative)
+
+
+def test_no_duplicate_numbers_on_same_resource(board):
+    seen = set()
+    for tile in board.tile_dict.values():
+        if tile['resource'] == 'desert':
+            continue
+        key = (tile['resource'], tile['num'])
+        assert key not in seen, (
+            f"Two {tile['resource']} tiles both have number {tile['num']}"
+        )
+        seen.add(key)
