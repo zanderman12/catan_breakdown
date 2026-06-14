@@ -94,8 +94,23 @@ def _create_board():
                   'brick', 'ore', 'ore', 'ore']
     tile_nums = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
 
-    random.shuffle(tile_types)
-    random.shuffle(tile_nums)
+    while True:
+        random.shuffle(tile_types)
+        random.shuffle(tile_nums)
+        # Reject layouts where any (resource, number) pair appears on two tiles.
+        seen: set = set()
+        num_counter = 0
+        duplicate = False
+        for t in tile_types:
+            if t != 'desert':
+                key = (t, tile_nums[num_counter])
+                if key in seen:
+                    duplicate = True
+                    break
+                seen.add(key)
+                num_counter += 1
+        if not duplicate:
+            break
 
     tile_dict = {}
     num_dict = {}
