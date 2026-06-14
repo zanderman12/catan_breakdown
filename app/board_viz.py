@@ -22,6 +22,8 @@ def build_board_figure(
     placed: list[int],
     node_positions: dict[int, tuple[float, float]],
     node_score_cache: dict[int, float],
+    trainer_mode: bool = False,
+    phase: str = "placing",
 ) -> go.Figure:
     """Return a Plotly figure with tiles, number tokens, and clickable node markers."""
     fig = go.Figure()
@@ -76,45 +78,66 @@ def build_board_figure(
                 borderpad=1,
             )
 
-    # ── Valid nodes (RdYlGn score colour) ────────────────────────────────────
+    # ── Valid nodes ───────────────────────────────────────────────────────────
     if valid_set:
         v_ids = sorted(valid_set)
         scores = [node_score_cache.get(n, 0.0) for n in v_ids]
-        s_min, s_max = min(scores), max(scores)
-        pad = (s_max - s_min) * 0.1 + 0.01
 
-        fig.add_trace(go.Scatter(
-            x=[node_positions[n][0] for n in v_ids],
-            y=[node_positions[n][1] for n in v_ids],
-            mode="markers+text",
-            marker=dict(
-                color=scores,
-                colorscale="RdYlGn",
-                cmin=s_min - pad,
-                cmax=s_max + pad,
-                size=20,
-                symbol="circle",
-                line=dict(color="white", width=1.5),
-                showscale=True,
-                colorbar=dict(
-                    title=dict(text="Score", side="right"),
-                    thickness=14,
-                    x=1.01,
-                    len=0.8,
+        hide_scores = trainer_mode and phase == "placing"
+
+        if hide_scores:
+            fig.add_trace(go.Scatter(
+                x=[node_positions[n][0] for n in v_ids],
+                y=[node_positions[n][1] for n in v_ids],
+                mode="markers+text",
+                marker=dict(
+                    color="rgba(150,150,150,0.85)",
+                    size=20,
+                    symbol="circle",
+                    line=dict(color="white", width=1.5),
                 ),
-            ),
-            customdata=[[n, board.pip_count(n)] for n in v_ids],
-            text=[str(n) for n in v_ids],
-            textposition="middle center",
-            textfont=dict(size=8, color="black"),
-            hovertemplate=(
-                "<b>Node %{customdata[0]}</b><br>"
-                "Score: %{marker.color:.1f}<br>"
-                "Pips: %{customdata[1]}"
-                "<extra></extra>"
-            ),
-            name="valid",
-        ))
+                customdata=[[n, board.pip_count(n)] for n in v_ids],
+                text=[str(n) for n in v_ids],
+                textposition="middle center",
+                textfont=dict(size=8, color="black"),
+                hovertemplate="<b>Node %{customdata[0]}</b><extra></extra>",
+                name="valid",
+            ))
+        else:
+            s_min, s_max = min(scores), max(scores)
+            pad = (s_max - s_min) * 0.1 + 0.01
+            fig.add_trace(go.Scatter(
+                x=[node_positions[n][0] for n in v_ids],
+                y=[node_positions[n][1] for n in v_ids],
+                mode="markers+text",
+                marker=dict(
+                    color=scores,
+                    colorscale="RdYlGn",
+                    cmin=s_min - pad,
+                    cmax=s_max + pad,
+                    size=20,
+                    symbol="circle",
+                    line=dict(color="white", width=1.5),
+                    showscale=True,
+                    colorbar=dict(
+                        title=dict(text="Score", side="right"),
+                        thickness=14,
+                        x=1.01,
+                        len=0.8,
+                    ),
+                ),
+                customdata=[[n, board.pip_count(n)] for n in v_ids],
+                text=[str(n) for n in v_ids],
+                textposition="middle center",
+                textfont=dict(size=8, color="black"),
+                hovertemplate=(
+                    "<b>Node %{customdata[0]}</b><br>"
+                    "Score: %{marker.color:.1f}<br>"
+                    "Pips: %{customdata[1]}"
+                    "<extra></extra>"
+                ),
+                name="valid",
+            ))
 
     # ── Placed nodes (blue stars) ────────────────────────────────────────────
     if placed_set:
