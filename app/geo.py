@@ -5,7 +5,7 @@ from catan.board import NODE_COORDS
 # Scale factors. DX=45 per col unit, DY=95 per row unit gives a visually
 # balanced board (widest row ~20 col units, 5 row units tall).
 DX: float = 45.0
-DY: float = 95.0
+DY: float = DX * math.sqrt(3)  # ≈ 77.94 — produces regular flat-top hexagons
 
 
 def compute_node_positions() -> dict[int, tuple[float, float]]:
