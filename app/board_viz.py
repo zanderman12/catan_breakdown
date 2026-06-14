@@ -185,7 +185,12 @@ def build_board_figure(
     fig.update_layout(
         height=520,
         xaxis=dict(visible=False, range=[min(all_x) - 60, max(all_x) + 60]),
-        yaxis=dict(visible=False, range=[max(all_y) + 50, min(all_y) - 50]),
+        yaxis=dict(
+            visible=False,
+            range=[max(all_y) + 50, min(all_y) - 50],
+            scaleanchor="x",
+            scaleratio=1,
+        ),
         plot_bgcolor="#1e6fa8",
         paper_bgcolor="white",
         margin=dict(l=10, r=90, t=20, b=10),
