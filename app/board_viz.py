@@ -46,6 +46,7 @@ def build_board_figure(
             path=path,
             fillcolor=RESOURCE_COLORS[resource],
             line=dict(color="#111111", width=2),
+            layer="below",
         )
 
         num = board.tile_dict[tile_id]["num"]
