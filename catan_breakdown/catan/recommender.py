@@ -24,6 +24,7 @@ def recommend(
     placed_so_far: list[int],
     top_n: int = 5,
     lookahead: bool = False,
+    blocked: list[int] | None = None,
 ) -> list[tuple[int, float]]:
     """Return top-N recommended settlement nodes with their scores.
 
@@ -31,21 +32,24 @@ def recommend(
     ----------
     board : CatanBoard
     placed_so_far : list[int]
-        Node IDs already placed (by any player); determines legal moves and
-        serves as the scoring prefix.
+        Node IDs the user has already placed; used as the scoring prefix.
     top_n : int
         Maximum results to return.
     lookahead : bool
         If True, score each candidate by the best achievable pair score
         (this pick + optimal next pick).  If False, score by greedy
         composite_score of placed_so_far + [node].
+    blocked : list[int] | None
+        Additional node IDs (e.g. opponent settlements) that are off-limits
+        but should not be included in the user's score calculation.
 
     Returns
     -------
     list[tuple[int, float]]
         (node_id, score) pairs sorted descending by score, length <= top_n.
     """
-    candidates = board.valid_placements(placed_so_far)
+    all_blocked = list(placed_so_far) + (list(blocked) if blocked else [])
+    candidates = board.valid_placements(all_blocked)
     if not candidates:
         return []
 

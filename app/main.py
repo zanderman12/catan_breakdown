@@ -1,5 +1,6 @@
 """Catan Settlement Placement Trainer — Streamlit web app."""
 import os
+import random
 import sys
 
 # Make the catan package importable and app helpers importable.
@@ -12,6 +13,25 @@ import streamlit as st
 from catan.board import CatanBoard
 from catan.scoring import score_placement, percentile_rank
 from catan.recommender import recommend
+
+
+def _simulate_picks(board: CatanBoard, all_placed: list[int], n_picks: int) -> list[int]:
+    """Simulate n_picks AI opponent settlements, each chosen randomly from the top 3 available."""
+    picks: list[int] = []
+    current = list(all_placed)
+    for _ in range(n_picks):
+        valid = board.valid_placements(current)
+        if not valid:
+            break
+        scored = sorted(
+            valid,
+            key=lambda n: score_placement(current + [n], board)["composite_score"],
+            reverse=True,
+        )
+        chosen = random.choice(scored[:min(3, len(scored))])
+        picks.append(chosen)
+        current.append(chosen)
+    return picks
 
 import board_viz
 import ui_helpers
@@ -31,8 +51,10 @@ def _refresh_score_cache() -> None:
     """Recompute composite_score for every currently valid node."""
     board = st.session_state.board
     placed = st.session_state.placed
+    ai_placed = st.session_state.get("ai_placements", [])
+    all_placed = placed + ai_placed
     cache: dict[int, float] = {}
-    for n in board.valid_placements(placed):
+    for n in board.valid_placements(all_placed):
         cache[n] = score_placement(placed + [n], board)["composite_score"]
     st.session_state.node_score_cache = cache
 
@@ -50,6 +72,15 @@ def _init_state() -> None:
         st.session_state.board_ver = 0
         if "trainer_mode" not in st.session_state:
             st.session_state.trainer_mode = True
+        if "num_players" not in st.session_state:
+            st.session_state.num_players = 4
+        # Randomly assign the user's position in the snake draft
+        num_players = st.session_state.num_players
+        player_position = random.randint(0, num_players - 1)
+        st.session_state.player_position = player_position
+        # Simulate picks by players who go before the user
+        ai_pre = _simulate_picks(board, [], player_position)
+        st.session_state.ai_placements = ai_pre
         _refresh_score_cache()
 
 
@@ -57,13 +88,15 @@ def _handle_click(node_id: int) -> bool:
     """Process a node click. Returns True if the click was valid and placed."""
     board = st.session_state.board
     placed = st.session_state.placed
-    valid = board.valid_placements(placed)
+    ai_placed = st.session_state.get("ai_placements", [])
+    all_placed = placed + ai_placed
+    valid = board.valid_placements(all_placed)
 
     if node_id not in valid:
         return False
 
-    # Capture recommendations made before this pick.
-    recs = recommend(board, placed, top_n=5, lookahead=False)
+    # Capture recommendations before this pick (valid nodes exclude opponent settlements).
+    recs = recommend(board, placed, top_n=5, lookahead=False, blocked=ai_placed)
     st.session_state.pre_recs.append(recs)
 
     placed = placed + [node_id]
@@ -74,6 +107,15 @@ def _handle_click(node_id: int) -> bool:
 
     pct = percentile_rank(placed, board, n_simulations=500)
     st.session_state.percentile_history.append(pct)
+
+    # After the user's first pick, simulate AI picks that happen before the user's second pick.
+    if len(placed) == 1:
+        num_players = st.session_state.get("num_players", 4)
+        player_pos = st.session_state.get("player_position", 0)
+        n_ai = 2 * (num_players - 1 - player_pos)
+        if n_ai > 0:
+            new_ai = _simulate_picks(board, placed + ai_placed, n_ai)
+            st.session_state.ai_placements = ai_placed + new_ai
 
     if len(placed) >= 2:
         st.session_state.phase = "done"
@@ -89,6 +131,9 @@ def _render_sidebar() -> None:
     placed = st.session_state.placed
     phase = st.session_state.phase
     trainer_mode = st.session_state.get("trainer_mode", True)
+    ai_placed = st.session_state.get("ai_placements", [])
+    num_players = st.session_state.get("num_players", 4)
+    player_pos = st.session_state.get("player_position", 0)
 
     st.sidebar.title("Catan Placement Trainer")
 
@@ -103,9 +148,11 @@ def _render_sidebar() -> None:
     with col1:
         if st.button("🔀 New Board", use_container_width=True):
             saved_trainer = st.session_state.get("trainer_mode", True)
+            saved_num_players = st.session_state.get("num_players", 4)
             for k in list(st.session_state.keys()):
                 del st.session_state[k]
             st.session_state.trainer_mode = saved_trainer
+            st.session_state.num_players = saved_num_players
             st.rerun()
     with col2:
         if st.button("↩ Reset Picks", use_container_width=True, disabled=(len(placed) == 0)):
@@ -115,8 +162,48 @@ def _render_sidebar() -> None:
             st.session_state.percentile_history = []
             st.session_state.pre_recs = []
             st.session_state.board_ver += 1
+            # Re-run pre-game AI picks for the same player position
+            ai_pre = _simulate_picks(board, [], player_pos)
+            st.session_state.ai_placements = ai_pre
             _refresh_score_cache()
             st.rerun()
+
+    st.sidebar.divider()
+
+    # Game setup (show before first pick so user can change num_players)
+    if len(placed) == 0:
+        new_num = st.sidebar.selectbox(
+            "Players in game",
+            options=[2, 3, 4],
+            index=[2, 3, 4].index(num_players),
+            key="num_players_select",
+        )
+        if new_num != num_players:
+            st.session_state.num_players = new_num
+            # Re-randomise position and re-run pre-game picks for new player count
+            new_pos = random.randint(0, new_num - 1)
+            st.session_state.player_position = new_pos
+            ai_pre = _simulate_picks(board, [], new_pos)
+            st.session_state.ai_placements = ai_pre
+            _refresh_score_cache()
+            st.rerun()
+
+    # Always show turn position
+    ordinal_pos = ui_helpers.ordinal(player_pos + 1)
+    st.sidebar.caption(
+        f"You are the **{ordinal_pos} player** of {num_players} "
+        f"(pick {player_pos + 1} and {2 * num_players - player_pos} in snake draft)"
+    )
+
+    # Show pre-game opponent picks (nodes taken before user's first turn)
+    pre_game_picks = ai_placed[:player_pos]
+    if pre_game_picks:
+        st.sidebar.caption(
+            "Before your turn, opponents took: "
+            + ", ".join(
+                f"node {n} ({board.pip_count(n)} pips)" for n in pre_game_picks
+            )
+        )
 
     st.sidebar.divider()
 
@@ -133,10 +220,20 @@ def _render_sidebar() -> None:
         else:
             st.sidebar.info(f"**Pick {pick_n} of 2** — click a green/yellow node on the board")
 
+    # Show inter-pick opponent settlements after user's first pick
+    inter_picks = ai_placed[player_pos:]
+    if inter_picks and len(placed) >= 1:
+        st.sidebar.write(
+            "**Opponents took between your picks:** "
+            + ", ".join(
+                f"node {n} ({board.pip_count(n)} pips)" for n in inter_picks
+            )
+        )
+
     # Recommendations: shown immediately in normal mode; only revealed after done in trainer mode
     if not hiding:
         if phase == "placing":
-            recs = recommend(board, placed, top_n=5, lookahead=False)
+            recs = recommend(board, placed, top_n=5, lookahead=False, blocked=ai_placed)
             if recs:
                 st.sidebar.subheader("🤖 Top Picks")
                 for rank, (nid, score) in enumerate(recs, 1):
@@ -254,6 +351,7 @@ fig = board_viz.build_board_figure(
     st.session_state.node_score_cache,
     trainer_mode=trainer_mode,
     phase=phase,
+    ai_placed=st.session_state.get("ai_placements", []),
 )
 
 ver = st.session_state.board_ver
