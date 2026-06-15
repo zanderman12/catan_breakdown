@@ -36,6 +36,7 @@ def _simulate_picks(board: CatanBoard, all_placed: list[int], n_picks: int) -> l
 import board_viz
 import ui_helpers
 from geo import compute_node_positions
+from config import BUY_ME_A_COFFEE_URL
 
 st.set_page_config(
     page_title="Catan Placement Trainer",
@@ -312,6 +313,15 @@ def _render_sidebar() -> None:
         ]
         if ports:
             st.sidebar.write("Ports: " + " · ".join(ui_helpers.port_label(p) for p in ports))
+
+    if BUY_ME_A_COFFEE_URL:
+        st.sidebar.divider()
+        st.sidebar.markdown(
+            f'<a href="{BUY_ME_A_COFFEE_URL}" target="_blank">'
+            '<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"'
+            ' alt="Buy Me A Coffee" style="height:40px;width:auto;"></a>',
+            unsafe_allow_html=True,
+        )
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
