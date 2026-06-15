@@ -314,6 +314,32 @@ def _render_sidebar() -> None:
         if ports:
             st.sidebar.write("Ports: " + " · ".join(ui_helpers.port_label(p) for p in ports))
 
+    st.sidebar.divider()
+    with st.sidebar.expander("ℹ️ How is the score calculated?"):
+        st.markdown(
+            """
+The AI scores each node using five factors combined into a **composite score**:
+
+**Pips** *(weight ×1.0)*
+Total dice-probability dots across your tiles. 6 and 8 give 5 pips each; 5/9 give 4; 4/10 give 3; 3/11 give 2; 2/12 give 1. More pips → more expected resources per turn.
+
+**Resource Score** *(weight ×0.5)*
+Each resource is weighted by how scarce it is on this particular board. A resource that appears on fewer tiles is worth more.
+
+**Port Value** *(weight ×2.0)*
+Bonus for an adjacent trade port. A 2:1 resource port is especially valuable when that resource is rare on the board. Ports are weighted highest because they compound every trade for the whole game.
+
+**Diversity** *(weight ×1.0)*
+Rewards covering multiple distinct resource types. The more unique resources in your two settlements, the better your long-term flexibility.
+
+**Port Synergy** *(weight ×1.0)*
+Extra bonus when a 2:1 port matches a resource you already produce heavily — you'll turn surplus into trades efficiently.
+
+---
+`Composite = Pips + 0.5×Resource + 2×Port + Diversity + Port Synergy`
+            """
+        )
+
     if BUY_ME_A_COFFEE_URL:
         st.sidebar.divider()
         st.sidebar.markdown(
