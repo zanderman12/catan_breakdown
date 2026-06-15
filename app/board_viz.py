@@ -24,12 +24,15 @@ def build_board_figure(
     node_score_cache: dict[int, float],
     trainer_mode: bool = False,
     phase: str = "placing",
+    ai_placed: list[int] | None = None,
 ) -> go.Figure:
     """Return a Plotly figure with tiles, number tokens, and clickable node markers."""
     fig = go.Figure()
 
     placed_set = set(placed)
-    valid_set = set(board.valid_placements(placed))
+    ai_placed_set = set(ai_placed or [])
+    all_placed = list(placed_set | ai_placed_set)
+    valid_set = set(board.valid_placements(all_placed))
 
     # ── Tile polygons + number tokens ────────────────────────────────────────
     for tile_id in board.tile_dict:
@@ -160,8 +163,32 @@ def build_board_figure(
             name="placed",
         ))
 
+    # ── AI-placed nodes (opponent settlements — red X) ────────────────────────
+    if ai_placed_set:
+        ai_ids = list(ai_placed_set)
+        fig.add_trace(go.Scatter(
+            x=[node_positions[n][0] for n in ai_ids],
+            y=[node_positions[n][1] for n in ai_ids],
+            mode="markers+text",
+            marker=dict(
+                color="#dc2626",
+                size=22,
+                symbol="x",
+                line=dict(color="white", width=2),
+            ),
+            customdata=[[n, board.pip_count(n)] for n in ai_ids],
+            text=[str(n) for n in ai_ids],
+            textposition="top center",
+            textfont=dict(size=8, color="#dc2626"),
+            hovertemplate="<b>Node %{customdata[0]}</b> (opponent)<extra></extra>",
+            name="opponent",
+        ))
+
     # ── Invalid nodes (faded, shown for reference) ───────────────────────────
-    invalid_ids = [n for n in node_positions if n not in valid_set and n not in placed_set]
+    invalid_ids = [
+        n for n in node_positions
+        if n not in valid_set and n not in placed_set and n not in ai_placed_set
+    ]
     if invalid_ids:
         fig.add_trace(go.Scatter(
             x=[node_positions[n][0] for n in invalid_ids],
