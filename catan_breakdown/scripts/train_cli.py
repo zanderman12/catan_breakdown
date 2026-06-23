@@ -31,19 +31,24 @@ def _ordinal(n: int) -> str:
     return f"{n}{['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]}"
 
 
+def _y_to_row(y: float) -> int:
+    """Map a node's y-coordinate to its logical row index (0=top … 5=bottom)."""
+    return round((3.75 - y) / 1.5)
+
+
 def render_board(board: CatanBoard, placed: list[int], valid: list[int]) -> None:
     """Print ASCII hex board. Each node is [nn]=valid, (nn)=placed, ' nn '=invalid."""
     placed_set = set(placed)
     valid_set = set(valid)
 
-    # Group nodes by row number from NODE_COORDS
-    rows: dict[int, list[tuple[int, int]]] = {}
+    # Group nodes by logical row (0-5). NODE_COORDS now stores real (x, y).
+    rows: dict[int, list[tuple[float, int]]] = {}
     for node, (col, row) in NODE_COORDS.items():
-        rows.setdefault(row, []).append((col, node))
+        rows.setdefault(_y_to_row(row), []).append((col, node))
 
-    COL_SCALE = 4
-    COL_OFFSET = 2  # shifts minimum col (-2) to x=0
-    canvas_width = (19 + COL_OFFSET) * COL_SCALE + 5
+    COL_SCALE = 8       # chars per x-unit (x is integer, range -5..5)
+    COL_OFFSET = 5      # shifts minimum x (-5) to character position 0
+    canvas_width = (5 + COL_OFFSET) * COL_SCALE + 5  # = 85
 
     print()
     for row_idx in range(6):

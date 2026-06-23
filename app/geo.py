@@ -1,16 +1,14 @@
-"""Coordinate conversion: NODE_COORDS (col, row) → pixel (x, y) for Plotly."""
-import math
+"""Coordinate conversion: NODE_COORDS (x, y) → pixel (px, py) for Plotly."""
 from catan.board import NODE_COORDS
 
-# Scale factors. DX=45 per col unit, DY=95 per row unit gives a visually
-# balanced board (widest row ~20 col units, 5 row units tall).
-DX: float = 45.0
-DY: float = DX * math.sqrt(3)  # ≈ 77.94 — produces regular flat-top hexagons
+# Pixels per coordinate unit.  NODE_COORDS uses y-up convention; Plotly's
+# board_viz uses an inverted y-axis (range=[max,min]), so py = -y * SCALE.
+SCALE: float = 80.0
 
 
 def compute_node_positions() -> dict[int, tuple[float, float]]:
-    """Return {node_id: (x_pixel, y_pixel)} for all 54 nodes."""
-    return {nid: (col * DX, row * DY) for nid, (col, row) in NODE_COORDS.items()}
+    """Return {node_id: (px, py)} for all 54 nodes in Plotly pixel space."""
+    return {nid: (x * SCALE, -y * SCALE) for nid, (x, y) in NODE_COORDS.items()}
 
 
 def compute_tile_center(
