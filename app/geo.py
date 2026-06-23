@@ -1,4 +1,5 @@
 """Coordinate conversion: NODE_COORDS (x, y) → pixel (px, py) for Plotly."""
+import math
 from catan.board import NODE_COORDS
 
 # Pixels per coordinate unit.  NODE_COORDS uses y-up convention; Plotly's
