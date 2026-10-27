@@ -15,7 +15,7 @@ black==19.10b0
 bleach @ file:///tmp/build/80754af9/bleach_1628110601003/work
 brotlipy==0.7.0
 -e git+https://github.com/zanderman12/catan_breakdown.git@18d40b000a97385da6ba95d655e0e3034c840aa8#egg=catan&subdirectory=catan_breakdown
-certifi==2021.10.8
+certifi==2026.10.23
 cffi @ file:///C:/ci/cffi_1636542074879/work
 chardet @ file:///C:/ci/chardet_1607690654534/work
 charset-normalizer==2.0.9
