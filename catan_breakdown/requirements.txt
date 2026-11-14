@@ -117,7 +117,7 @@ sip==4.19.13
 six @ file:///tmp/build/80754af9/six_1623709665295/work
 snowballstemmer @ file:///tmp/build/80754af9/snowballstemmer_1637937080595/work
 sortedcontainers @ file:///tmp/build/80754af9/sortedcontainers_1623949099177/work
-soupsieve==2.3.1
+soupsieve==4.0
 Sphinx==4.2.0
 sphinxcontrib-applehelp @ file:///home/ktietz/src/ci/sphinxcontrib-applehelp_1611920841464/work
 sphinxcontrib-devhelp @ file:///home/ktietz/src/ci/sphinxcontrib-devhelp_1611920923094/work
